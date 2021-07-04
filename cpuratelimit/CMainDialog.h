@@ -32,14 +32,29 @@ constexpr T checked_cast(auto from)
 
 constexpr DWORD MB(ULONGLONG val) { return checked_cast<DWORD>(val / 1024 / 1024); }
 
-
-class CMainDialog
+struct Config
 {
-    CMainDialog()
+    Config()
     {
         THROW_IF_WIN32_BOOL_FALSE(GlobalMemoryStatusEx(&memStatus));
         DWORD TotalPageFileInfMB = MB(memStatus.ullTotalPageFile);
         processMemory = { TotalPageFileInfMB,TotalPageFileInfMB, 1 };
+
+    }
+    StaticLimitedInt<WORD, 100, 1> cpuRateMin = 1, cpuRateMax = 100;
+    StaticLimitedInt<DWORD, 9, 1> cpuRateWeight = 5;
+    StaticLimitedInt<DWORD, 10000, 1> cpuRate = 10000;
+    constexpr static DWORD LimitPerProcess = (0x80000000000ULL / 1024 / 1024);
+    LimitedInt<DWORD> processMemory;
+    StaticLimitedInt<DWORD, 1024, 0> bandWidth = 1024;
+
+    MEMORYSTATUSEX memStatus{ sizeof(memStatus) };
+};
+
+class CMainDialog
+{
+    CMainDialog(Config& config) : config(config)
+    {
 
     }
     static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -86,27 +101,27 @@ class CMainDialog
     {
         Button_SetCheck(getDlgItem(IDC_RADIO_CPU_NOLIMIT), BST_CHECKED);
 
-        setTrackbarFrom(IDC_SLIDER_CPU_RATE, cpuRate);
-        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE, cpuRate, FALSE);
+        setTrackbarFrom(IDC_SLIDER_CPU_RATE, config.cpuRate);
+        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE, config.cpuRate, FALSE);
         TrackBaar_SetBuddy(getDlgItem(IDC_SLIDER_CPU_RATE), FALSE, getDlgItem(IDC_EDIT_CPU_RATE));
 
-        Edit_LimitText(getDlgItem(IDC_EDIT_CPU_RATE_MIN), cpuRateMin.log10OfMaxValue() + 1);
-        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_MIN, cpuRateMin, FALSE);
+        Edit_LimitText(getDlgItem(IDC_EDIT_CPU_RATE_MIN), config.cpuRateMin.log10OfMaxValue() + 1);
+        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_MIN, config.cpuRateMin, FALSE);
 
-        Edit_LimitText(getDlgItem(IDC_EDIT_CPU_RATE_MAX), cpuRateMax.log10OfMaxValue() + 1);
-        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_MAX, cpuRateMax, FALSE);
+        Edit_LimitText(getDlgItem(IDC_EDIT_CPU_RATE_MAX), config.cpuRateMax.log10OfMaxValue() + 1);
+        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_MAX, config.cpuRateMax, FALSE);
 
-        setTrackbarFrom(IDC_SLIDER_CPU_RATE_WEIGHT, cpuRateWeight);
-        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_WEIGHT, cpuRateWeight, FALSE);
+        setTrackbarFrom(IDC_SLIDER_CPU_RATE_WEIGHT, config.cpuRateWeight);
+        SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_WEIGHT, config.cpuRateWeight, FALSE);
         TrackBaar_SetBuddy(getDlgItem(IDC_SLIDER_CPU_RATE_WEIGHT), FALSE, getDlgItem(IDC_EDIT_CPU_RATE_WEIGHT));
 
-        setTrackbarFrom(IDC_SLIDER_MEMORY_LIMIT, processMemory, 100);
-        SetDlgItemInt(hDlg, IDC_EDIT_MEMORY_LIMIT, MB(memStatus.ullAvailPageFile), FALSE);
+        setTrackbarFrom(IDC_SLIDER_MEMORY_LIMIT, config.processMemory, 100);
+        SetDlgItemInt(hDlg, IDC_EDIT_MEMORY_LIMIT, MB(config.memStatus.ullAvailPageFile), FALSE);
 
         TrackBaar_SetSelStart(getDlgItem(IDC_SLIDER_MEMORY_LIMIT), FALSE, 0);
-        TrackBaar_SetSelEnd(getDlgItem(IDC_SLIDER_MEMORY_LIMIT), FALSE, MB(memStatus.ullTotalPhys));
+        TrackBaar_SetSelEnd(getDlgItem(IDC_SLIDER_MEMORY_LIMIT), FALSE, MB(config.memStatus.ullTotalPhys));
 
-        setTrackbarFrom(IDC_SLIDER_BANDWIDTH_LIMIT, bandWidth, 100);
+        setTrackbarFrom(IDC_SLIDER_BANDWIDTH_LIMIT, config.bandWidth, 100);
         Button_SetCheck(getDlgItem(IDC_RADIO_BANDWIDTH_GB), BST_CHECKED);
 
         auto check{ getDlgItem(IDC_CHECK_AFFINITY0) };
@@ -159,13 +174,15 @@ class CMainDialog
             WCHAR path[MAX_PATH]{};
             OPENFILENAME ofn
             {
-                .lStructSize = sizeof(ofn),
-                .hwndOwner = hDlg,
-                .hInstance = nullptr,
-                .lpstrFilter = L"*.*",
-                .lpstrFile = path,
-                .nMaxFile = ARRAYSIZE(path),
-                //.nFilterIndex = 0,
+                DESIGNED_INIT(.lStructSize = )sizeof(ofn),
+                DESIGNED_INIT(.hwndOwner = ) hDlg,
+                DESIGNED_INIT(.hInstance = )nullptr,
+                DESIGNED_INIT(.lpstrFilter = )L"*.*",
+                DESIGNED_INIT(.lpstrCustomFilter = ) nullptr,
+                DESIGNED_INIT(.nMaxCustFilter = ) 0,
+                DESIGNED_INIT(.nFilterIndex = )0,
+                DESIGNED_INIT(.lpstrFile = ) path,
+                DESIGNED_INIT(.nMaxFile = )ARRAYSIZE(path),
             };
             if (GetOpenFileName(&ofn))
             {
@@ -224,15 +241,8 @@ class CMainDialog
 
     HWND hDlg{};
     std::vector<LPCWSTR> args;
-    StaticLimitedInt<WORD, 100, 1> cpuRateMin = 1, cpuRateMax = 100;
-    StaticLimitedInt<DWORD, 9, 1> cpuRateWeight = 5;
-    StaticLimitedInt<DWORD, 10000, 1> cpuRate = 10000;
     std::array<HWND, sizeof(DWORD_PTR) * 8> affinityCheckBox{};
-    constexpr static DWORD LimitPerProcess = (0x80000000000ULL / 1024 / 1024);
-    LimitedInt<DWORD> processMemory;
-    StaticLimitedInt<DWORD, 1024, 0> bandWidth = 1024;
-
-    MEMORYSTATUSEX memStatus{ sizeof(memStatus) };
+    Config& config;
 
     void setTrackbarFrom(WORD id, LimitedInt<DWORD> val, DWORD tic = 10)
     {
@@ -248,13 +258,13 @@ class CMainDialog
         switch (id)
         {
         case IDC_EDIT_CPU_RATE_WEIGHT:
-            val = cpuRateWeight;
+            val = config.cpuRateWeight;
             return true;
         case IDC_EDIT_CPU_RATE_MAX:
-            val = cpuRateMax;
+            val = config.cpuRateMax;
             return true;
         case IDC_EDIT_CPU_RATE_MIN:
-            val = cpuRateMin;
+            val = config.cpuRateMin;
             return true;
         default:
             return false;
@@ -303,7 +313,7 @@ class CMainDialog
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION i{};
         i.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PROCESS_MEMORY;
         i.ProcessMemoryLimit = getDlgItemUInt(IDC_SLIDER_MEMORY_LIMIT) * 1024ULL * 1024U;
-        
+
         i.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_AFFINITY;
         i.BasicLimitInformation.Affinity = get_affinityMask();
 
@@ -373,7 +383,8 @@ public:
         auto argv = CommandLineToArgvW(lpCmdLine, &argc);
         argv++; argc--;
 
-        CMainDialog self{};
+        Config config{};
+        CMainDialog self{ config };
         self.args = { argv , argv + argc };
 
         return DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_MAINDIALOG), nullptr, &DlgProc, reinterpret_cast<LPARAM>(&self));
