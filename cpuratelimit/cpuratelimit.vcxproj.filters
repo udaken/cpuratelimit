@@ -55,4 +55,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="dpiawareness.manifest" />
+  </ItemGroup>
 </Project>
