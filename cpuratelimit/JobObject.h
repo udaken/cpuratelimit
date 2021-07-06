@@ -53,13 +53,22 @@ public:
 
     void setNetRateControlInfo(JOBOBJECT_NET_RATE_CONTROL_INFORMATION info)
     {
-        THROW_IF_WIN32_BOOL_FALSE(SetInformationJobObject(m_hJob.get(), JobObjectNetRateControlInformation, &info, sizeof(info)));
+        if (info.ControlFlags != 0)
+            THROW_IF_WIN32_BOOL_FALSE(SetInformationJobObject(m_hJob.get(), JobObjectNetRateControlInformation, &info, sizeof(info)));
     }
 
 };
 
 namespace my {
 
+    [[nodiscard]]
+    inline std::wstring getWindowText(HWND hWnd)
+    {
+        int len = GetWindowTextLength(hWnd);
+        std::wstring buf(len, L'\0');
+        GetWindowText(hWnd, buf.data(), (int)buf.size() + 1);
+        return buf;
+    }
     [[nodiscard]]
     inline wil::unique_handle invokeProcess(LPCWSTR path, LPCWSTR param = nullptr)
     {
@@ -79,10 +88,7 @@ namespace my {
     [[nodiscard]]
     inline std::wstring getDlgItemText(HWND hDlg, INT id)
     {
-        int len = GetWindowTextLength(GetDlgItem(hDlg, id));
-        std::wstring buf(len, L'\0');
-        GetDlgItemText(hDlg, id, buf.data(), (int)buf.size() + 1 );
-        return buf;
+        return getWindowText(GetDlgItem(hDlg, id));
     }
 
     constexpr DWORD WS_EX_MASK = (
@@ -131,7 +137,7 @@ namespace my {
         return hWnd;
     }
 
-    inline std::pair<POINT, SIZE> rectToPointSize(const RECT &r)
+    inline std::pair<POINT, SIZE> rectToPointSize(const RECT& r)
     {
         return { POINT{ r.left, r.top,  }, SIZE{ r.right - r.left, r.bottom - r.top }, };
     }

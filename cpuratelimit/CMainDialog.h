@@ -255,7 +255,8 @@ class CMainDialog
             job.assignProcess(process.get());
             WaitForInputIdle(process.get(), 10000);
             auto pid = GetProcessId(process.get());
-            MessageBox(hDlg, (L"PID: "s + std::to_wstring(pid)).c_str(), L"", MB_ICONINFORMATION);
+            MessageBox(hDlg, (L"Process ran with PID: "s + std::to_wstring(pid).append(L"\nWhile this dialog is displayed, the process will be constrained."sv)).c_str(), 
+                my::getWindowText(hDlg).c_str(), MB_ICONINFORMATION);
             return true;
         }
         case IDC_LOAD_DEFAULT:
@@ -353,7 +354,12 @@ class CMainDialog
 
     void onWmScroll(bool vertical, WORD pos, WORD cause, HWND ctrlhWnd)
     {
-        if (ctrlhWnd == getDlgItem(IDC_SLIDER_BANDWIDTH_LIMIT))
+        if (ctrlhWnd == getDlgItem(IDC_SLIDER_CPU_RATE_WEIGHT))
+        {
+            auto value = getTrackBarPos(IDC_SLIDER_CPU_RATE_WEIGHT);
+            SetDlgItemInt(hDlg, IDC_EDIT_CPU_RATE_WEIGHT, value, FALSE);
+        }
+        else if (ctrlhWnd == getDlgItem(IDC_SLIDER_BANDWIDTH_LIMIT))
         {
             auto value = getTrackBarPos(IDC_SLIDER_BANDWIDTH_LIMIT);
             SetDlgItemInt(hDlg, IDC_EDIT_BANDWIDTH_LIMIT, value, FALSE);
@@ -415,7 +421,7 @@ class CMainDialog
         {
             i.ControlFlags |=
                 JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
-            i.CpuRate = getTrackBarPos(IDC_EDIT_CPU_RATE);
+            i.CpuRate = getTrackBarPos(IDC_SLIDER_CPU_RATE);
         }
         else if (Button_GetCheck(getDlgItem(IDC_RADIO_CPU_WEIGHT_BASED)))
         {
@@ -423,7 +429,7 @@ class CMainDialog
                 JOB_OBJECT_CPU_RATE_CONTROL_WEIGHT_BASED;
             i.ControlFlags |=
                 Button_GetCheck(getDlgItem(IDC_CHECK_CPU_HARD_CAP)) ? JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP : 0;
-            i.Weight = getTrackBarPos(IDC_EDIT_CPU_RATE_WEIGHT);
+            i.Weight = getTrackBarPos(IDC_SLIDER_CPU_RATE_WEIGHT);
         }
         else if (Button_GetCheck(getDlgItem(IDC_RADIO_CPU_MIN_MAX_RATE)))
         {
@@ -466,6 +472,11 @@ class CMainDialog
 
     JOBOBJECT_NET_RATE_CONTROL_INFORMATION get_netRateControlInfo()
     {
+        if (Button_GetCheck(getDlgItem(IDC_RADIO_BANDWIDTH_GB)) && 
+            getTrackBarPos(IDC_SLIDER_BANDWIDTH_LIMIT) == TrackBaar_GetRangeMax(getDlgItem(IDC_SLIDER_BANDWIDTH_LIMIT)))
+        {
+            return {};
+        }
         JOBOBJECT_NET_RATE_CONTROL_INFORMATION info{};
         info.ControlFlags = JOB_OBJECT_NET_RATE_CONTROL_ENABLE | JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTH;
         info.MaxBandwidth = getTrackBarPos(IDC_SLIDER_BANDWIDTH_LIMIT) *
