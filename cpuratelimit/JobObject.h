@@ -55,10 +55,7 @@ public:
     {
         THROW_IF_WIN32_BOOL_FALSE(SetInformationJobObject(m_hJob.get(), JobObjectNetRateControlInformation, &info, sizeof(info)));
     }
-    void setIoRateControlInfo(JOBOBJECT_IO_RATE_CONTROL_INFORMATION  info)
-    {
-        THROW_IF_WIN32_BOOL_FALSE((BOOL)SetIoRateControlInformationJobObject(m_hJob.get(), &info));
-    }
+
 };
 
 namespace my {
@@ -84,7 +81,7 @@ namespace my {
     {
         int len = GetWindowTextLength(GetDlgItem(hDlg, id));
         std::wstring buf(len, L'\0');
-        GetDlgItemText(hDlg, id, buf.data(), (int)buf.capacity());
+        GetDlgItemText(hDlg, id, buf.data(), (int)buf.size() + 1 );
         return buf;
     }
 
@@ -134,10 +131,22 @@ namespace my {
         return hWnd;
     }
 
+    inline std::pair<POINT, SIZE> rectToPointSize(const RECT &r)
+    {
+        return { POINT{ r.left, r.top,  }, SIZE{ r.right - r.left, r.bottom - r.top }, };
+    }
+
     inline std::pair<POINT, SIZE> getWindowRect(HWND hWnd)
     {
         RECT r;
         THROW_IF_WIN32_BOOL_FALSE(GetWindowRect(hWnd, &r));
-        return { POINT{ r.left, r.top,  }, SIZE{ r.right - r.left, r.bottom - r.top }, };
+        return rectToPointSize(r);
+    }
+
+    inline std::pair<POINT, SIZE> getClientRect(HWND hWnd)
+    {
+        RECT r;
+        THROW_IF_WIN32_BOOL_FALSE(GetClientRect(hWnd, &r));
+        return rectToPointSize(r);
     }
 }

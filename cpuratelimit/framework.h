@@ -15,9 +15,4 @@
 #include <shellapi.h>
 #include <commctrl.h>
 #include <commdlg.h>
-// C ランタイム ヘッダー ファイル
-#include <stdlib.h>
-#include <malloc.h>
-#include <memory.h>
-#include <tchar.h>
 #include "wil/resource.h"
