@@ -66,14 +66,14 @@ inline namespace {
             if (v > max_value_) throw std::overflow_error{ std::to_string(v) + " > " + std::to_string(max_value()) };
         }
 
-        template <class T, T Tmax, T Tmin>
-        constexpr LimitedInt(StaticLimitedInt<T, Tmax, Tmin> other) : value(other), max_value_(Tmax), min_value_(Tmin)
+        template <class TValue, TValue Tmax, TValue Tmin>
+        constexpr LimitedInt(StaticLimitedInt<TValue, Tmax, Tmin> other) : value(other), max_value_(Tmax), min_value_(Tmin)
         {
-            static_assert(std::is_convertible_v<T, TBase>);
+            static_assert(std::is_convertible_v<TValue, TBase>);
         }
 
-        template <class T, T Tmax, T Tmin>
-        constexpr LimitedInt& operator=(StaticLimitedInt<T, Tmax, Tmin> other)
+        template <class TValue, TValue Tmax, TValue Tmin>
+        constexpr LimitedInt& operator=(StaticLimitedInt<TValue, Tmax, Tmin> other)
         {
             value = other;
             max_value_ = other.max_value();

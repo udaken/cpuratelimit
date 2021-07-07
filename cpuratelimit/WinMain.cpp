@@ -9,6 +9,7 @@
     processorArchitecture='*' \
     publicKeyToken='6595b64144ccf1df' \
     language='*'\"")
+#pragma comment(lib, "Pathcch.lib")
 
 #define MAX_LOADSTRING 100
 

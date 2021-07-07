@@ -15,4 +15,5 @@
 #include <shellapi.h>
 #include <commctrl.h>
 #include <commdlg.h>
+#include <pathcch.h>
 #include "wil/resource.h"

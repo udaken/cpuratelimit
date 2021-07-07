@@ -130,18 +130,20 @@ namespace my {
     [[nodiscard]]
     inline HWND copyDlgItem(HWND hWndFrom, LPCWSTR name, POINT pos, SIZE size, int  ctrlId = 0, LPVOID lParam = nullptr)
     {
-        auto hWnd = copyWindow(hWndFrom, name, pos, size, reinterpret_cast<HMENU>(static_cast<DWORD>(ctrlId)), lParam);
+        auto hWnd = copyWindow(hWndFrom, name, pos, size, reinterpret_cast<HMENU>(static_cast<ULONG_PTR>(static_cast<DWORD>(ctrlId))), lParam);
         auto hFont = reinterpret_cast<HFONT>(SendMessage(hWndFrom, WM_GETFONT, 0, 0));
         if (hFont)
             SendMessage(hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), FALSE);
         return hWnd;
     }
 
+    [[nodiscard]]
     inline std::pair<POINT, SIZE> rectToPointSize(const RECT& r)
     {
         return { POINT{ r.left, r.top,  }, SIZE{ r.right - r.left, r.bottom - r.top }, };
     }
 
+    [[nodiscard]]
     inline std::pair<POINT, SIZE> getWindowRect(HWND hWnd)
     {
         RECT r;
@@ -149,10 +151,27 @@ namespace my {
         return rectToPointSize(r);
     }
 
+    [[nodiscard]]
     inline std::pair<POINT, SIZE> getClientRect(HWND hWnd)
     {
         RECT r;
         THROW_IF_WIN32_BOOL_FALSE(GetClientRect(hWnd, &r));
         return rectToPointSize(r);
+    }
+
+    [[nodiscard]]
+    inline std::wstring getModuleFileName()
+    {
+        std::wstring buf(MAX_PATH, L'\0');
+        THROW_LAST_ERROR_IF(GetModuleFileName(nullptr, buf.data(), MAX_PATH) == 0);
+        return buf;
+    }
+
+    [[nodiscard]]
+    inline std::wstring changeExtention(std::wstring&& path, std::wstring_view ext)
+    {
+        path.reserve(path.capacity() + ext.length());
+        THROW_IF_FAILED(PathCchRenameExtension(path.data(), path.capacity(), ext.data()));
+        return path;
     }
 }
