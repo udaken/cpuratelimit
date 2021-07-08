@@ -123,6 +123,8 @@ class MainDialog
         { IDC_RADIO_BANDWIDTH, IDC_RADIO_BANDWIDTH_KB, IDC_RADIO_BANDWIDTH_MB, IDC_RADIO_BANDWIDTH_GB }
     ));
 
+    constexpr static auto const iniFileFilter = L"Ini File\0*.ini\0"sv;
+
     MainDialog(HINSTANCE hInst, Config& config) : config_(config)
         , hMenu_(LoadMenu(hInst, MAKEINTRESOURCE(IDR_CPURATELIMIT)))
     {
@@ -298,7 +300,7 @@ class MainDialog
         {
         case IDM_CONFIG_LOAD:
         {
-            auto path = showOpenDialog(hDlg_, getConfigFileName(), L"*.ini");
+            auto path = showOpenDialog(hDlg_, getConfigFileName(), iniFileFilter);
             if (path)
             {
                 config_.load(*path);
@@ -308,7 +310,7 @@ class MainDialog
         }
         case IDM_CONFIG_SAVE:
         {
-            auto path = showSaveDialog(hDlg_, getConfigFileName(), L"*.ini");
+            auto path = showSaveDialog(hDlg_, getConfigFileName(), iniFileFilter);
             if (path)
             {
                 config_ = toConfig();
@@ -347,7 +349,7 @@ class MainDialog
         }
         case IDC_SPLIT_FILE_SELECT:
         {
-            auto path = showOpenDialog(hDlg_, my::getDlgItemText(hDlg_, IDC_EDIT_PATH), L"*.*");
+            auto path = showOpenDialog(hDlg_, my::getDlgItemText(hDlg_, IDC_EDIT_PATH), L"Executable Files(*.*)\0*.*\0"sv);
             if (path)
             {
                 put_path(*path);
@@ -381,7 +383,7 @@ class MainDialog
     }
 
     [[nodiscard]]
-    std::optional<std::wstring> static showSaveDialog(HWND hDlg, std::wstring&& path, LPCWSTR filter)
+    std::optional<std::wstring> static showSaveDialog(HWND hDlg, std::wstring&& path, std::wstring_view filter)
     {
         path.resize(MAX_PATH);
 
@@ -390,7 +392,7 @@ class MainDialog
             DESIGNED_INIT(.lStructSize = )sizeof(ofn),
             DESIGNED_INIT(.hwndOwner = ) hDlg,
             DESIGNED_INIT(.hInstance = )nullptr,
-            DESIGNED_INIT(.lpstrFilter = )filter,
+            DESIGNED_INIT(.lpstrFilter = )filter.data(),
             DESIGNED_INIT(.lpstrCustomFilter = ) nullptr,
             DESIGNED_INIT(.nMaxCustFilter = ) 0,
             DESIGNED_INIT(.nFilterIndex = )0,
@@ -405,7 +407,7 @@ class MainDialog
     }
 
     [[nodiscard]]
-    std::optional<std::wstring> static showOpenDialog(HWND hDlg, std::wstring&& path, LPCWSTR filter)
+    std::optional<std::wstring> static showOpenDialog(HWND hDlg, std::wstring&& path, std::wstring_view filter)
     {
         path.resize(MAX_PATH);
 
@@ -414,7 +416,7 @@ class MainDialog
             DESIGNED_INIT(.lStructSize = )sizeof(ofn),
             DESIGNED_INIT(.hwndOwner = ) hDlg,
             DESIGNED_INIT(.hInstance = )nullptr,
-            DESIGNED_INIT(.lpstrFilter = )filter,
+            DESIGNED_INIT(.lpstrFilter = )filter.data(),
             DESIGNED_INIT(.lpstrCustomFilter = ) nullptr,
             DESIGNED_INIT(.nMaxCustFilter = ) 0,
             DESIGNED_INIT(.nFilterIndex = )0,

@@ -111,7 +111,7 @@ struct Config
     StaticLimitedInt<DWORD, 9, 1> cpuRateWeight = 5;
     StaticLimitedInt<DWORD, 10000, 1> cpuRate = 10000;
     bool cpuHardCap = true;
-    StaticLimitedInt<DWORD, LimitPerProcess> processMemory = LimitPerProcess;
+    StaticLimitedInt<DWORD, LimitPerProcess, 1> processMemory = LimitPerProcess;
     bool jobMemory = true;
     StaticLimitedInt< BandwidthScale, BandwidthScaleMax, BandwidthScaleb > bandWidthScale = BandwidthScaleGb;
     StaticLimitedInt<DWORD, 1023, 0> bandWidth = 1023;
