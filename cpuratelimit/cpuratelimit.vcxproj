@@ -169,7 +169,8 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CMainDialog.h" />
+    <ClInclude Include="MainDialog.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="JobObject.h" />
     <ClInclude Include="LimitedInt.h" />

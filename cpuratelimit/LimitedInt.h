@@ -1,6 +1,19 @@
 #pragma once
 #include <limits>
+#include <string>
 #include <stdexcept>
+
+template <class TElem>
+constexpr inline std::basic_string<TElem> operator +(std::basic_string_view< TElem> left, std::basic_string< TElem>&& right)
+{
+    return right.insert(0, left);
+}
+
+template <class TElem>
+constexpr inline std::basic_string<TElem> operator +(std::basic_string<TElem>&& left, std::basic_string_view< TElem> right)
+{
+    return left.append(right);
+}
 
 inline namespace {
     constexpr inline unsigned log10int(unsigned long long val)
@@ -14,6 +27,7 @@ inline namespace {
     template <class TBase, TBase Tmax, TBase Tmin = std::numeric_limits<TBase>::min()>
     struct StaticLimitedInt
     {
+        static_assert(std::is_arithmetic_v<TBase> || std::is_enum_v <TBase>);
     private:
         TBase value;
         constexpr static void verify(TBase value)
@@ -28,7 +42,7 @@ inline namespace {
 
         constexpr StaticLimitedInt(TBase v) : value(v)
         {
-            static_assert(std::is_integral_v<TBase>);
+            //static_assert(std::is_integral_v<TBase>);
             static_assert(Tmin < Tmax);
 
             verify(v);
@@ -42,12 +56,13 @@ inline namespace {
             return *this;
         }
 
+        constexpr TBase get() const { return value; }
         constexpr operator TBase() const { return value; }
         constexpr const TBase* operator &() const { return &value; }
         constexpr explicit operator bool() const = delete;
 
         constexpr static bool canConvertFrom(TBase v) { return min_value() <= v && v <= max_value(); }
-        constexpr static int log10OfMaxValue() { return (int)std::log10(max_value()); }
+        constexpr static int log10OfMaxValue() { return log10int(max_value()); }
     };
 
     template <class TBase = int>

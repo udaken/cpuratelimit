@@ -1,8 +1,4 @@
-﻿// header.h : 標準のシステム インクルード ファイルのインクルード ファイル、
-// またはプロジェクト専用のインクルード ファイル
-//
-
-#pragma once
+﻿#pragma once
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -17,3 +13,10 @@
 #include <commdlg.h>
 #include <pathcch.h>
 #include "wil/resource.h"
+
+#if __cpp_designated_initializers
+#define DESIGNED_INIT(member) member
+#else
+#define DESIGNED_INIT(member)
+#endif
+#define nameof(_a) # _a

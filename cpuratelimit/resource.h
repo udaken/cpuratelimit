@@ -5,10 +5,10 @@
 #define IDS_APP_TITLE                   103
 #define IDD_MAINDIALOG                  103
 #define IDM_ABOUT                       104
-#define IDM_EXIT                        105
 #define IDI_CPURATELIMIT                107
 #define IDI_SMALL                       108
 #define IDC_CPURATELIMIT                109
+#define IDR_CPURATELIMIT                109
 #define IDC_EDIT_PATH                   1000
 #define IDC_EDIT_PARAM                  1001
 #define IDC_RADIO_CPU_NOLIMIT           1002
@@ -34,9 +34,12 @@
 #define IDC_RADIO_BANDWIDTH_KB          1022
 #define IDC_RADIO_BANDWIDTH_MB          1023
 #define IDC_RADIO_BANDWIDTH_GB          1024
-#define IDC_LOAD_DEFAULT                1025
+#define IDC_SPLIT_LOAD_DEFAULT          1025
 #define IDC_CHECK_MEMORY_LIMIT_JOB      1027
-#define IDC_SYSLINK1                    1028
+#define IDC_SYSLINK1                    1029
+#define IDM_CONFIG_LOAD                 32771
+#define IDM_CONFIG_SAVE                 32772
+#define ID_BROWSE                       32773
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -44,9 +47,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        129
-#define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_RESOURCE_VALUE        131
+#define _APS_NEXT_COMMAND_VALUE         32774
+#define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

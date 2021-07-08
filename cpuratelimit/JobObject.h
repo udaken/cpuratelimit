@@ -1,12 +1,6 @@
 #pragma once
+#include "framework.h"
 #include <stdexcept>
-
-#if __cpp_designated_initializers
-#define DESIGNED_INIT(member) member
-#else
-#define DESIGNED_INIT(member)
-#endif
-#define nameof(_a) # _a
 
 class JobObject final
 {
@@ -56,7 +50,6 @@ public:
         if (info.ControlFlags != 0)
             THROW_IF_WIN32_BOOL_FALSE(SetInformationJobObject(m_hJob.get(), JobObjectNetRateControlInformation, &info, sizeof(info)));
     }
-
 };
 
 namespace my {
@@ -70,28 +63,29 @@ namespace my {
         return buf;
     }
     [[nodiscard]]
-    inline wil::unique_handle invokeProcess(LPCWSTR path, LPCWSTR param = nullptr)
+    inline wil::unique_handle invokeProcess(std::wstring_view path, std::wstring_view param = nullptr)
     {
         SHELLEXECUTEINFO sei = {
             DESIGNED_INIT(.cbSize = ) sizeof(sei),
             DESIGNED_INIT(.fMask = ) SEE_MASK_NOCLOSEPROCESS,
             DESIGNED_INIT(.hwnd = ) nullptr,
             DESIGNED_INIT(.lpVerb = ) nullptr,
-            DESIGNED_INIT(.lpFile = ) path,
-            DESIGNED_INIT(.lpParameters = ) param,
+            DESIGNED_INIT(.lpFile = ) path.data(),
+            DESIGNED_INIT(.lpParameters = ) param.data(),
             DESIGNED_INIT(.lpDirectory = ) nullptr,
             DESIGNED_INIT(.nShow = ) SW_SHOW,
         };
         THROW_IF_WIN32_BOOL_FALSE(ShellExecuteEx(&sei));
         return wil::unique_handle{ sei.hProcess };
     }
+
     [[nodiscard]]
     inline std::wstring getDlgItemText(HWND hDlg, INT id)
     {
         return getWindowText(GetDlgItem(hDlg, id));
     }
 
-    constexpr DWORD WS_EX_MASK = (
+    constexpr inline DWORD WS_EX_MASK = (
         WS_EX_RIGHT |
         WS_EX_LEFT |
         WS_EX_RTLREADING |
@@ -168,7 +162,7 @@ namespace my {
     }
 
     [[nodiscard]]
-    inline std::wstring changeExtention(std::wstring&& path, std::wstring_view ext)
+    inline std::wstring renameExtension(std::wstring&& path, std::wstring_view ext)
     {
         path.reserve(path.capacity() + ext.length());
         THROW_IF_FAILED(PathCchRenameExtension(path.data(), path.capacity(), ext.data()));
