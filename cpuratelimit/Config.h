@@ -30,36 +30,6 @@ void check_nulterm(std::basic_string_view<Elem, Traits> sv)
     assert(sv.find_last_of(static_cast<Elem>(0)) != npos);
 }
 
-#if !__cpp_lib_to_array
-namespace std {
-    namespace {
-        template <class _Ty, size_t _Size, size_t... _Idx>
-        [[nodiscard]]
-        constexpr array<remove_cv_t<_Ty>, _Size> to_array_lvalue_impl(
-            _Ty(&_Array)[_Size], index_sequence<_Idx...>)
-        {
-            return { {_Array[_Idx]...} };
-        }
-
-        template <class _Ty, size_t _Size, size_t... _Idx>
-        [[nodiscard]]
-        constexpr array<remove_cv_t<_Ty>, _Size> to_array_rvalue_impl(
-            _Ty(&& _Array)[_Size], index_sequence<_Idx...>)
-        {
-            return { {move(_Array[_Idx])...} };
-        }
-    }
-
-    template<class TValue, size_t N>
-    [[nodiscard]]
-    constexpr array<remove_cv_t<TValue>, N> to_array(TValue(&a)[N]) { return to_array_lvalue_impl(a, make_index_sequence<N>{}); }
-    template<class TValue, size_t N>
-    [[nodiscard]]
-    constexpr array<remove_cv_t<TValue>, N> to_array(TValue(&& a)[N]) { return to_array_rvalue_impl(move(a), make_index_sequence<N>{}); }
-}
-#endif
-
-using std::begin, std::end;
 using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
 
@@ -149,7 +119,7 @@ struct Config
         {
             DESIGNED_INIT(.commandPath = ) GetPrivateProfileString(appName, TEXT(nameof(commandPath)), commandPath.c_str(), path.data()),
             DESIGNED_INIT(.commandParametor = ) GetPrivateProfileString(appName, TEXT(nameof(commandParametor)), commandParametor.c_str(), path.data()),
-            DESIGNED_INIT(.affinityMask = ) GetPrivateProfileLongLong(appName, TEXT(nameof(affinityMask)), affinityMask, path.data()),
+            DESIGNED_INIT(.affinityMask = ) static_cast<ULONG_PTR>(GetPrivateProfileLongLong(appName, TEXT(nameof(affinityMask)), affinityMask, path.data())),
             DESIGNED_INIT(.cpuLimitType = ) static_cast<CpuLimitType>(GetPrivateProfileInt(appName, TEXT(nameof(cpuLimitType)), cpuLimitType, path.data())),
             DESIGNED_INIT(.cpuRateMin = ) checked_cast<WORD>(GetPrivateProfileInt(appName, TEXT(nameof(cpuRateMin)), cpuRateMin, path.data())),
             DESIGNED_INIT(.cpuRateMax = ) checked_cast<WORD>(GetPrivateProfileInt(appName, TEXT(nameof(cpuRateMax)), cpuRateMax, path.data())),
@@ -250,9 +220,13 @@ private:
         _In_opt_ LPCWSTR lpDefault,
         _In_opt_ LPCWSTR lpFileName)
     {
-        auto size = ::GetPrivateProfileString(lpAppName, lpKeyName, lpDefault, nullptr, 0, lpFileName);
-        std::wstring buf(size, L'\0');
-        buf.resize(::GetPrivateProfileString(lpAppName, lpKeyName, lpDefault, buf.data(), size, lpFileName));
+        std::wstring buf(512, L'\0');
+        auto size = ::GetPrivateProfileString(lpAppName, lpKeyName, lpDefault, buf.data(), buf.size(), lpFileName);
+        if (size == 0)
+            return lpDefault;
+        if (size == buf.size() - 1)
+            buf.resize(size + 256);
+        buf.resize(::GetPrivateProfileString(lpAppName, lpKeyName, lpDefault, buf.data(), size + 1, lpFileName));
         return buf;
     }
 
@@ -273,7 +247,8 @@ private:
     {
         std::wstring buf(512, L'\0');
         auto size = ::GetPrivateProfileString(lpAppName, lpKeyName, nullptr, buf.data(), buf.size(), lpFileName);
-        if (size == 0) return ullDefault;
+        if (size == 0)
+            return ullDefault;
         return std::stoull(buf, nullptr, 0);
     }
 };

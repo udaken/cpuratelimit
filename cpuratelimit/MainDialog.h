@@ -26,13 +26,12 @@ catch (const wil::ResultException& e) \
         MessageBox(hWnd, message, g_szTitle, MB_ICONERROR); \
     }
 
-
 #if !__cpp_lib_to_array
 namespace std {
     namespace {
         template <class _Ty, size_t _Size, size_t... _Idx>
         [[nodiscard]]
-        constexpr array<remove_cv_t<_Ty>, _Size> to_array_lvalue_impl(
+        constexpr inline array<remove_cv_t<_Ty>, _Size> to_array_lvalue_impl(
             _Ty(&_Array)[_Size], index_sequence<_Idx...>)
         {
             return { {_Array[_Idx]...} };
@@ -40,7 +39,7 @@ namespace std {
 
         template <class _Ty, size_t _Size, size_t... _Idx>
         [[nodiscard]]
-        constexpr array<remove_cv_t<_Ty>, _Size> to_array_rvalue_impl(
+        constexpr inline array<remove_cv_t<_Ty>, _Size> to_array_rvalue_impl(
             _Ty(&& _Array)[_Size], index_sequence<_Idx...>)
         {
             return { {move(_Array[_Idx])...} };
@@ -49,78 +48,89 @@ namespace std {
 
     template<class TValue, size_t N>
     [[nodiscard]]
-    constexpr array<remove_cv_t<TValue>, N> to_array(TValue(&a)[N]) { return to_array_lvalue_impl(a, make_index_sequence<N>{}); }
+    constexpr inline array<remove_cv_t<TValue>, N> to_array(TValue(&a)[N]) { return to_array_lvalue_impl(a, make_index_sequence<N>{}); }
+
     template<class TValue, size_t N>
     [[nodiscard]]
-    constexpr array<remove_cv_t<TValue>, N> to_array(TValue(&& a)[N]) { return to_array_rvalue_impl(move(a), make_index_sequence<N>{}); }
+    constexpr inline array<remove_cv_t<TValue>, N> to_array(TValue(&& a)[N]) { return to_array_rvalue_impl(move(a), make_index_sequence<N>{}); }
 }
 #endif
 
-using std::begin, std::end;
 using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
+
+struct RadiobuttonInfo {
+    const int ctrlId;
+    const std::vector<int> relatedControls;
+};
 
 template <size_t size>
 struct RadioGroup
 {
-    const std::array<int, size> group;
+    const std::array<RadiobuttonInfo, size> group;
     using iterator = typename decltype(group)::const_iterator;
 
-    void check(HWND hDlg, iterator checkId) const
+    void check(HWND hDlg, iterator checkId, bool notify = false) const
     {
-        assert(checkId != end(group));
-        CheckRadioButton(hDlg, group[0], group[group.size() - 1], *checkId);
+        assert(checkId != end());
+        CheckRadioButton(hDlg, group[0].ctrlId, group[group.size() - 1].ctrlId, checkId->ctrlId);
+        if (notify)
+            SendMessage(hDlg, WM_COMMAND, MAKELONG(checkId->ctrlId, BN_CLICKED), reinterpret_cast<LPARAM>(GetDlgItem(hDlg, checkId->ctrlId)));
     }
 
     iterator getChecked(HWND hDlg) const
     {
-        return std::find_if(begin(group), end(group), [=](int ctrlId) { return IsDlgButtonChecked(hDlg, ctrlId) == BST_CHECKED; });
+        return std::find_if(begin(), end(), [=](auto item) { return IsDlgButtonChecked(hDlg, item.ctrlId) == BST_CHECKED; });
     }
+
     size_t getCheckedAsOffset(HWND hDlg) const
     {
         return offset(getChecked(hDlg));
     }
 
-    size_t offset(iterator i) const
+    constexpr size_t offset(iterator i) const
     {
-        assert(i != end(group));
-        return std::distance(first(), i);
+        assert(i != end());
+        return std::distance(begin(), i);
     }
 
-    auto indexOf(int ctrlId) const { return std::find(begin(group), end(group), ctrlId); }
+    constexpr auto indexOf(int ctrlId) const
+    {
+        return std::find_if(begin(), end(), [=](auto item) { return item.ctrlId == ctrlId; });
+    }
 
-    constexpr iterator first() const { return begin(group); }
-    constexpr iterator last() const { return end(group) - 1; }
+    constexpr iterator last() const { return end() - 1; }
 
-    operator std::array<int, size>() const { return group; }
+    constexpr iterator begin() const { return std::begin(group); }
+    constexpr iterator end() const { return std::end(group); }
 };
 
 template <size_t size>
-constexpr RadioGroup<size> make_radioGroup(std::array<int, size>&& group) { return RadioGroup<size>{ group }; }
+RadioGroup<size> make_radioGroup(std::array<RadiobuttonInfo, size>&& group) { return RadioGroup<size>{ group }; }
 
 enum class SubMenuId {
     Config = 0,
     Bworse,
 };
 
-static inline struct {
-    const int ctrlId;
-    const std::vector<int> relatedControls;
-} const radioButtonRelatedControl[] =
-{
-    {IDC_RADIO_CPU_WEIGHT_BASED, {IDC_SLIDER_CPU_RATE_WEIGHT}},
-    {IDC_RADIO_CPU_MIN_MAX_RATE, {IDC_EDIT_CPU_RATE_WEIGHT, IDC_CHECK_CPU_HARD_CAP}},
-    {IDC_RADIO_CPU_RATE, {}},
-};
-
 class MainDialog
 {
-    constexpr static inline auto const radioGroupCpuLimit = make_radioGroup(std::to_array(
-        { IDC_RADIO_CPU_NOLIMIT, IDC_RADIO_CPU_WEIGHT_BASED, IDC_RADIO_CPU_MIN_MAX_RATE, IDC_RADIO_CPU_RATE }
+    inline static auto const radioGroupCpuLimit = make_radioGroup(std::to_array(
+        {
+            RadiobuttonInfo{IDC_RADIO_CPU_NOLIMIT},
+            RadiobuttonInfo{IDC_RADIO_CPU_WEIGHT_BASED, {IDC_SLIDER_CPU_RATE_WEIGHT, IDC_CHECK_CPU_HARD_CAP, IDC_EDIT_CPU_RATE_WEIGHT}},
+            RadiobuttonInfo{IDC_RADIO_CPU_MIN_MAX_RATE, {IDC_EDIT_CPU_RATE_MIN, IDC_EDIT_CPU_RATE_MAX}},
+            RadiobuttonInfo{IDC_RADIO_CPU_RATE, {IDC_SLIDER_CPU_RATE, IDC_EDIT_CPU_RATE}},
+        }
     ));
 
-    constexpr static auto const radioGroupBandwidth = make_radioGroup(std::to_array(
-        { IDC_RADIO_BANDWIDTH, IDC_RADIO_BANDWIDTH_KB, IDC_RADIO_BANDWIDTH_MB, IDC_RADIO_BANDWIDTH_GB }
+    inline static auto const radioGroupBandwidth = make_radioGroup(std::to_array(
+        {
+            RadiobuttonInfo{IDC_RADIO_BANDWIDTH},
+            RadiobuttonInfo{IDC_RADIO_BANDWIDTH_KB},
+            RadiobuttonInfo{IDC_RADIO_BANDWIDTH_MB},
+            RadiobuttonInfo{IDC_RADIO_BANDWIDTH_GB},
+        }
     ));
 
     constexpr static auto const iniFileFilter = L"Ini File\0*.ini\0"sv;
@@ -130,6 +140,7 @@ class MainDialog
     {
         assert(hMenu_);
     }
+
     ~MainDialog() noexcept
     {
         DestroyMenu(hMenu_);
@@ -166,6 +177,9 @@ class MainDialog
         case WM_NOTIFY:
             getUserData(hDlg)->onWmNotify((LPNMHDR)lParam);
             break;
+        case WM_DROPFILES:
+            getUserData(hDlg)->onWmDropFiles((HDROP)wParam);
+            break;
         case WM_VSCROLL:
         case WM_HSCROLL:
             getUserData(hDlg)->onWmScroll(message == WM_VSCROLL, HIWORD(wParam), LOWORD(wParam), (HWND)lParam);
@@ -194,17 +208,17 @@ class MainDialog
         if (args_.size() > 0)
             put_path(args_[0]);
 
-        fromConfig();
+        fromConfig(true);
     }
 
-    void fromConfig()
+    void fromConfig(bool init = false)
     {
         SetDlgItemText(hDlg_, IDC_EDIT_PATH, config_.commandPath.c_str());
         SetDlgItemText(hDlg_, IDC_EDIT_PARAM, config_.commandParametor.c_str());
 
         put_affinityMask(getSystemAffinityMask() & config_.affinityMask);
 
-        radioGroupCpuLimit.check(hDlg_, radioGroupCpuLimit.first() + config_.cpuLimitType);
+        radioGroupCpuLimit.check(hDlg_, radioGroupCpuLimit.begin() + config_.cpuLimitType, init);
 
         Edit_LimitText(getDlgItem(IDC_EDIT_CPU_RATE_MIN), config_.cpuRateMin.log10OfMaxValue() + 1);
         SetDlgItemInt(hDlg_, IDC_EDIT_CPU_RATE_MIN, config_.cpuRateMin, FALSE);
@@ -230,7 +244,7 @@ class MainDialog
 
         Button_SetCheck(getDlgItem(IDC_CHECK_MEMORY_LIMIT_JOB), config_.jobMemory ? BST_CHECKED : BST_UNCHECKED);
 
-        radioGroupBandwidth.check(hDlg_, radioGroupBandwidth.first() + config_.bandWidthScale);
+        radioGroupBandwidth.check(hDlg_, radioGroupBandwidth.begin() + config_.bandWidthScale, init);
 
         setTrackbarFrom(IDC_SLIDER_BANDWIDTH_LIMIT, config_.bandWidth, 100);
         SetDlgItemInt(hDlg_, IDC_EDIT_BANDWIDTH_LIMIT, config_.bandWidth, FALSE);
@@ -294,7 +308,7 @@ class MainDialog
 
         return hwndTip;
     }
-    bool onWmCommand(WORD ctrlId, WORD codeNotify) try
+    bool onWmCommand(WORD const ctrlId, WORD const codeNotify) try
     {
         switch (ctrlId)
         {
@@ -332,6 +346,8 @@ class MainDialog
             job.setExtendLimitInfo(extendLimit);
             job.setNetRateControlInfo(config_.get_netRateControlInfo());
             auto process = my::invokeProcess(config_.commandPath, config_.commandParametor);
+            if (!process.is_valid())
+                return true;
             job.assignProcess(process.get());
             WaitForInputIdle(process.get(), 10000);
             auto pid = GetProcessId(process.get());
@@ -357,9 +373,18 @@ class MainDialog
             return true;
         }
         default:
-        {
-            LimitedInt<DWORD> item;
-            if (codeNotify == EN_UPDATE && tryGetLimitedInt(ctrlId, item))
+            if (auto itr = radioGroupCpuLimit.indexOf(ctrlId); codeNotify == BN_CLICKED && itr != radioGroupCpuLimit.end())
+            {
+                for (auto&& a : radioGroupCpuLimit)
+                {
+                    BOOL enable = a.ctrlId == itr->ctrlId;
+                    for (auto&& b : a.relatedControls)
+                    {
+                        EnableWindow(getDlgItem(b), enable);
+                    }
+                }
+            }
+            else if (LimitedInt<DWORD> item; codeNotify == EN_UPDATE && tryGetLimitedInt(ctrlId, item))
             {
                 BOOL transelated;
                 UINT val = GetDlgItemInt(hDlg_, ctrlId, &transelated, FALSE);
@@ -370,12 +395,17 @@ class MainDialog
                     Edit_EmptyUndoBuffer(getDlgItem(ctrlId));
                 }
             }
-        }
-        break;
+            break;
         }
         return false;
     }
-    CATCH_MSGBOX(hDlg_)
+    catch (const wil::ResultException& e) \
+    {
+        wchar_t message[2048];
+        wil::GetFailureLogString(message, ARRAYSIZE(message), e.GetFailureInfo());
+        MessageBox(hDlg_, message, g_szTitle, MB_ICONERROR);
+        return false;
+    }
     catch (const std::exception& e)
     {
         MessageBoxA(hDlg_, e.what(), "cpuratelimit", MB_ICONERROR);
@@ -446,8 +476,8 @@ class MainDialog
 
             TrackPopupMenu(GetSubMenu(hMenu_, static_cast<int>(i->second)), TPM_LEFTALIGN | TPM_TOPALIGN, p.x, p.y, 0, hDlg_, nullptr);
         }
-
     }
+
     void onNotifyTrackBarThumbPosChanging(WORD ctrlId, NMTRBTHUMBPOSCHANGING* pnmdropdown)
     {}
 
@@ -487,9 +517,23 @@ class MainDialog
         }
     }
     CATCH_MSGBOX(hDlg_)
-    catch (const std::exception& e)
+        catch (const std::exception& e)
     {
         MessageBoxA(hDlg_, e.what(), "cpuratelimit", MB_ICONERROR);
+    }
+
+    void onWmDropFiles(HDROP hDrop)
+    {
+        auto uFileNo = DragQueryFile(hDrop, -1, nullptr, 0);
+        //POINT pt{};
+        //DragQueryPoint(hDrop, &pt);
+        if (uFileNo > 0)
+        {
+            WCHAR path[MAX_PATH];
+            THROW_LAST_ERROR_IF(0 == DragQueryFile(hDrop, 0, path, ARRAYSIZE(path)));
+            put_path({ path, ARRAYSIZE(path) });
+        }
+        DragFinish(hDrop);
     }
 
     void onWmScroll(bool vertical, WORD pos, WORD cause, HWND ctrlhWnd)

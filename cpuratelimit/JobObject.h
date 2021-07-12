@@ -75,7 +75,7 @@ namespace my {
             DESIGNED_INIT(.lpDirectory = ) nullptr,
             DESIGNED_INIT(.nShow = ) SW_SHOW,
         };
-        THROW_IF_WIN32_BOOL_FALSE(ShellExecuteEx(&sei));
+        THROW_LAST_ERROR_IF(ShellExecuteEx(&sei) == FALSE && GetLastError() != ERROR_CANCELLED);
         return wil::unique_handle{ sei.hProcess };
     }
 
